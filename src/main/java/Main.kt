@@ -11,12 +11,12 @@ private fun tdlFiles(base: File): Sequence<File> {
 }
 
 private fun parseFile(file: File): TdlParser {
-    val kl = TdlLexer(ANTLRFileStream(file.absolutePath))
-    val kts = CommonTokenStream(kl)
-    val kp = TdlParser(kts)
-    kp.removeErrorListeners()
-    kp.addErrorListener(ErrorPrinter())
-    return kp
+    val lexer = TdlLexer(ANTLRFileStream(file.absolutePath))
+    val tokenStream = CommonTokenStream(lexer)
+    val parser = TdlParser(tokenStream)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ErrorPrinter())
+    return parser
 }
 
 fun main(args: Array<String>) {
@@ -29,10 +29,10 @@ fun main(args: Array<String>) {
             totalFiles++
             println("Parsing: $source")
             System.out.flush()
-            val kp = parseFile(source)
-            val ctx = kp.tdlFile()
+            val parser = parseFile(source)
+            val ctx = parser.tdlFile()
             if (files.count() == 1) {
-                val ruleList = kp.ruleNames.asSequence()
+                val ruleList = parser.ruleNames.asSequence()
                     .filter { it.matches("[a-zA-Z]*".toRegex()) }
                     .toList()
                 ctx.inspect(ruleList)
