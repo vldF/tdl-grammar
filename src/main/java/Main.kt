@@ -31,12 +31,7 @@ fun main(args: Array<String>) {
             System.out.flush()
             val parser = parseFile(source)
             val ctx = parser.tdlFile()
-            if (files.count() == 1) {
-                val ruleList = parser.ruleNames.asSequence()
-                    .filter { it.matches("[a-zA-Z]*".toRegex()) }
-                    .toList()
-                ctx.inspect(ruleList)
-            }
+
             successful++
         } catch (ex: Exception) {
             println("Exception: " + ex.message)
