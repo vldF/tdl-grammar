@@ -1,6 +1,7 @@
 package ast.objects
 
-data class ParametredEntity(override val name: String, val parameterNameList: List<Parameter>) : EntityBase() {
+// todo: replace params to smthing
+data class CallableEntity(override val name: String, val parameterNameList: List<Parameter>) : EntityBase() {
     override fun getBasicScope(): MutableSet<EntityBase> {
         val scope = mutableSetOf<EntityBase>()
         scope.addAll(parameterNameList)

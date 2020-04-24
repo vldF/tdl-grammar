@@ -6,31 +6,31 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class TreeTest {
-        private lateinit var root: Root
-        private lateinit var function1: ParametredEntity
-        private lateinit var type1: ParametredEntity
-        private lateinit var var1: Variable
+    private lateinit var root: Root
+    private lateinit var function1: CallableEntity
+    private lateinit var type1: CallableEntity
+    private lateinit var var1: Variable
 
-        @BeforeEach
-        fun initTree() {
-            root = Root()
-            function1 = ParametredEntity("fun1", listOf(Parameter("a")))
-            type1 = ParametredEntity("type1", listOf())
-            var1 = Variable("var1")
+    @BeforeEach
+    fun initTree() {
+        root = Root()
+        function1 = CallableEntity("fun1", listOf(Parameter("a")))
+        type1 = CallableEntity("type1", listOf())
+        var1 = Variable("var1")
 
-            val var1Func1 = Variable("var1Func1")
-            function1.addChild(var1Func1)
+        val var1Func1 = Variable("var1Func1")
+        function1.addChild(var1Func1)
 
-            val func1type1 = ParametredEntity("func1type1", listOf())
-            type1.addChild(func1type1)
+        val func1type1 = CallableEntity("func1type1", listOf())
+        type1.addChild(func1type1)
 
-            val exp1var1 = Add(Constant(3), Variable("var1"))
-            var1.addChild(exp1var1)
+        val exp1var1 = Add(Constant(3), Variable("var1"))
+        var1.addChild(exp1var1)
 
-            root.addChild(function1)
-            root.addChild(type1)
-            root.addChild(var1)
-        }
+        root.addChild(function1)
+        root.addChild(type1)
+        root.addChild(var1)
+    }
 
     @Test
     fun basicTest() {
