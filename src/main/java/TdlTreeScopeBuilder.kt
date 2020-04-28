@@ -1,11 +1,17 @@
 import ast.objects.CallableEntity
 import ast.objects.Parameter
 import ast.objects.Variable
+import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTree
+
 
 class TdlTreeScopeBuilder(parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
     private val text = parser.inputStream.text
 
+    init {
+        globalScope.addType(CallableEntity("String", listOf()))
+        globalScope.addType(CallableEntity("Integer", listOf()))
+    }
 
     override fun visitFunctionBody(ctx: TdlParser.FunctionBodyContext?) {
         val leafs = getFlattenLeaf(ctx as ParseTree)
@@ -20,9 +26,21 @@ class TdlTreeScopeBuilder(parser: TdlParser, private val globalScope: Scope) : T
         val localScope = globalScope.getScope(name) ?: throw Exception("function's body visited earlier than declaration")
 
         for (leaf in leafs) {
+            val name = leaf.text
             when (getTokenType(leaf, text)) {
                 TokenType.VARIABLE_DECLARATION -> {
-                    localScope.addVariable(Variable(leaf.text))
+                    val referenceType = getVariableAssigmentType(leaf)
+                    if (referenceType == null)
+                        localScope.addVariable(Variable(name))
+                    else{
+                        val exemplar = Variable(name)
+                        val paramList = localScope.getType(referenceType)?.parameterNameList?.map { it.name }
+                        if (paramList == null)
+                            System.err.println("type not found: $referenceType")
+                        else
+                            exemplar.fields = paramList
+                        localScope.addExemplar(exemplar)
+                    }
                 }
             }
         }
@@ -43,6 +61,18 @@ class TdlTreeScopeBuilder(parser: TdlParser, private val globalScope: Scope) : T
 
     private fun getParametersNames(ctx: TdlParser.ParametersContext): List<String> {
         return ctx.children.filterIsInstance<TdlParser.ParameterContext>().map { it.text }
+    }
+
+    private fun getVariableAssigmentType(token: Token): String? {
+        val definitionStart = token.stopIndex + 1
+        val definitionEnd = text.indexOf(";", startIndex = definitionStart)
+        val definition = text.slice(definitionStart until definitionEnd)
+        if (definition.contains(" as ")) {
+            // casting var to type
+            val type = definition.split(" as ")[1]
+            return type.replace(" ", "")
+        }
+        return null
     }
 
     override fun visitTypeDeclaration(ctx: TdlParser.TypeDeclarationContext) {

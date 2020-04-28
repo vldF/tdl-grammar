@@ -13,6 +13,7 @@ class Scope(name: String, baseScope: Scope?) {
     private val variables = mutableMapOf<String, Variable>()
     private val functions = mutableMapOf<String,MutableList<CallableEntity>>()
     private val types = mutableMapOf<String, CallableEntity>()
+    private val typesExemplar = mutableMapOf<String, Variable>()
     private val invokesOn = mutableMapOf<String, CallableEntity>()
     private val children = mutableMapOf<String, Scope>()
 
@@ -24,19 +25,20 @@ class Scope(name: String, baseScope: Scope?) {
 
 
     fun getVariable(name: String): Variable? {
-        if(variables[name] == null && parent != null)
-            return parent.getVariable(name)
-
-        variables[name]?.isUsed = true
-        return variables[name]
+        return variables[name] ?: parent?.getVariable(name)
     }
 
-    fun getFunction(name: String, paramsCount: Int) =
-            functions[name]?.find { it.parameterNameList.size == paramsCount }
+    fun getFunction(name: String, paramsCount: Int): CallableEntity? =
+            functions[name]?.find { it.parameterNameList.size == paramsCount } ?: parent?.getFunction(name, paramsCount)
 
-    fun getType(name: String, paramsCount: Int) = types[name]
+    fun getType(name: String, paramsCount: Int = -1): CallableEntity? {
+        return if (types[name] != null && (types[name]?.parameterNameList?.size == paramsCount || paramsCount == -1))
+            types[name]
+        else
+            parent?.getType(name, paramsCount)
+    }
 
-    fun getInvokeOn(name: String, paramsCount: Int) = invokesOn[name]
+    fun getInvokeOn(name: String, paramsCount: Int): CallableEntity? = invokesOn[name] ?: parent?.getInvokeOn(name, paramsCount)
 
     fun getCallable(name: String, paramsCount: Int): CallableEntity? {
         val res = when {
@@ -50,12 +52,13 @@ class Scope(name: String, baseScope: Scope?) {
                 types[name]
 
             else -> null
-        }
+        } ?: return parent?.getCallable(name, paramsCount)
 
-        res?.isUsed = true
-
+        res.isUsed = true
         return res
     }
+
+    fun getExemplar(name: String): Variable? = typesExemplar[name] ?: parent?.getExemplar(name)
 
     fun addVariable(variable: Variable) {
         if (variables[variable.name] != null) {
@@ -92,5 +95,12 @@ class Scope(name: String, baseScope: Scope?) {
         }
         invokesOn[invoke.name] = invoke
 
+    }
+
+    fun addExemplar(variable: Variable) {
+        if (typesExemplar[variable.name] != null) {
+            throw Exception("ambiguity") // todo
+        }
+        typesExemplar[variable.name] = variable
     }
 }

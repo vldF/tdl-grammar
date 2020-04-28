@@ -1,9 +1,4 @@
-import ast.objects.CallableEntity
-import ast.objects.Parameter
-import ast.objects.Variable
 import org.antlr.v4.runtime.Token
-import org.antlr.v4.runtime.tree.ParseTree
-import org.antlr.v4.runtime.tree.TerminalNode
 
 class TdlTreeScopeValidatorVisitor(parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
     private val text: String = parser.inputStream.text
@@ -19,13 +14,37 @@ class TdlTreeScopeValidatorVisitor(parser: TdlParser, private val globalScope: S
         val localScope = globalScope.getScope(name) ?: throw Exception("scope doesn't exist")
 
         for (leaf in getFlattenLeaf(ctx)) {
+            val leafName = leaf.text
             when(getTokenType(leaf, text)) {
-                TokenType.VARIABLE -> localScope.getVariable(leaf.text) ?: System.err.println("cant resolve variable ${leaf.text}")
-                else -> println("${leaf.text} skipped")
+                TokenType.VARIABLE -> localScope.getVariable(leafName) ?: System.err.println("can't resolve variable ${leaf.text}")
+                TokenType.CALLABLE -> {
+                    val paramsCount = getParamsCount(leaf)
+                    localScope.getCallable(leafName, paramsCount) ?: System.err.println("can't resolve callable ${leaf.text}")
+                }
+                TokenType.MEMBER -> {
+                    val variableName = getTypedVariableByMemberToken(leaf, text)
+                    val variable = localScope.getExemplar(variableName)
+                    if (variable == null) {
+                        System.err.println("can't resolve variable $variableName for member $leafName")
+                    }
+                }
+                else -> println("$leafName skipped")
             }
         }
 
         super.visitFunctionBody(ctx)
+    }
+
+    private fun getParamsCount(token: Token): Int {
+        val startBracket = token.stopIndex + 1
+        val stopBracket = text.slice(startBracket until text.length).indexOfFirst { it == ')' } + startBracket
+        val split = text.slice(startBracket..stopBracket)
+        val charCount = split.count { it != ' ' }
+        return if (charCount == 2) { // empty brackets
+            0
+        } else {
+            1 + split.count { it == ',' }
+        }
     }
 
 }

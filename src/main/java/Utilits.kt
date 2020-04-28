@@ -66,7 +66,7 @@ enum class TokenType {
 }
 
 
-private fun getTypedVariableByMemberToken(token: Token, text: String): String {
+fun getTypedVariableByMemberToken(token: Token, text: String): String {
     var i = token.startIndex - 2 // -2= -1 - 1, where first -1 points to dot, second -1 points to end of var
     val res = StringBuffer()
     while (i >= 0 && text[i] !in listOf('.', ',', ' ', '(', ')', '\n')) { // todo: add other token separators
