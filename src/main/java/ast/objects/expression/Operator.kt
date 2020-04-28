@@ -33,3 +33,5 @@ data class UMinus(val a: EntityBase) : Operator() {
         return listOf()
     }
 }
+
+data class As(override val a: EntityBase, override val b: EntityBase) : BinaryOperator()

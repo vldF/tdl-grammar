@@ -25,17 +25,18 @@ fun main(args: Array<String>) {
     var totalFiles = 0
     var successful = 0
     for (source in files) {
-        try {
-            totalFiles++
-            println("Parsing: $source")
-            System.out.flush()
-            val parser = parseFile(source)
-            val ctx = parser.tdlFile()
+        totalFiles++
+        println("Parsing: $source")
+        System.out.flush()
+        val parser = parseFile(source)
+        parser.buildParseTree = true
+        val ctx = parser.tdlFile()
 
-            successful++
-        } catch (ex: Exception) {
-            println("Exception: " + ex.message)
-        }
+        val globalScope = Scope()
+        TdlTreeScopeBuilder(parser, globalScope).visit(ctx)
+        TdlTreeScopeValidatorVisitor(parser, globalScope).visit(ctx)
+
+        successful++
     }
     println("Total files: $totalFiles; successfully parsed: $successful")
 }
