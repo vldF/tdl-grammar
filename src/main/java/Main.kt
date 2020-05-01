@@ -2,14 +2,6 @@ import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 
-private fun tdlFiles(base: File): Sequence<File> {
-    if (!base.isDirectory && base.name.endsWith(".tdl")) {
-        return sequenceOf(base)
-    }
-    val files = base.listFiles()?.asSequence() ?: emptySequence()
-    return files.flatMap { tdlFiles(it) }
-}
-
 private fun parseFile(file: File): TdlParser {
     val lexer = TdlLexer(ANTLRFileStream(file.absolutePath))
     val tokenStream = CommonTokenStream(lexer)
@@ -21,7 +13,7 @@ private fun parseFile(file: File): TdlParser {
 
 fun main(args: Array<String>) {
     val base = args.getOrNull(0) ?: "examples"
-    val files = tdlFiles(File(base))
+    val files = File(base).listFiles()!!
     var totalFiles = 0
     var successful = 0
     for (source in files) {
@@ -34,7 +26,10 @@ fun main(args: Array<String>) {
 
         val globalScope = Scope()
         TdlTreeScopeBuilder(parser, globalScope).visit(ctx)
-        TdlTreeScopeValidatorVisitor(parser, globalScope).visit(ctx)
+
+        for (unusedEntity in globalScope.getUnused()) {
+            println(unusedEntity)
+        }
 
         successful++
     }

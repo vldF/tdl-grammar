@@ -18,7 +18,7 @@ class TdlTreeScopeValidatorVisitor(parser: TdlParser, private val globalScope: S
             when(getTokenType(leaf, text)) {
                 TokenType.VARIABLE -> localScope.getVariable(leafName) ?: System.err.println("can't resolve variable ${leaf.text}")
                 TokenType.CALLABLE -> {
-                    val paramsCount = getParamsCount(leaf)
+                    val paramsCount = getParamsCount(leaf, text)
                     localScope.getCallable(leafName, paramsCount) ?: System.err.println("can't resolve callable ${leaf.text}")
                 }
                 TokenType.MEMBER -> {
@@ -35,16 +35,6 @@ class TdlTreeScopeValidatorVisitor(parser: TdlParser, private val globalScope: S
         super.visitFunctionBody(ctx)
     }
 
-    private fun getParamsCount(token: Token): Int {
-        val startBracket = token.stopIndex + 1
-        val stopBracket = text.slice(startBracket until text.length).indexOfFirst { it == ')' } + startBracket
-        val split = text.slice(startBracket..stopBracket)
-        val charCount = split.count { it != ' ' }
-        return if (charCount == 2) { // empty brackets
-            0
-        } else {
-            1 + split.count { it == ',' }
-        }
-    }
+
 
 }

@@ -5,7 +5,7 @@ import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTree
 
 
-class TdlTreeScopeBuilder(parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
+class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
     private val text = parser.inputStream.text
 
     init {
@@ -13,78 +13,47 @@ class TdlTreeScopeBuilder(parser: TdlParser, private val globalScope: Scope) : T
         globalScope.addType(CallableEntity("Integer", listOf()))
     }
 
-    override fun visitFunctionBody(ctx: TdlParser.FunctionBodyContext?) {
-        val leafs = getFlattenLeaf(ctx as ParseTree)
-        val name =
-                if (ctx.parent is TdlParser.FunctionDeclarationContext)
-                    (ctx.parent as TdlParser.FunctionDeclarationContext).simpleIdentifier().Identifier().text
-                else {
-                    super.visitFunctionBody(ctx)
-                    return
-                }
-
-        val localScope = globalScope.getScope(name) ?: throw Exception("function's body visited earlier than declaration")
-
-        for (leaf in leafs) {
-            val name = leaf.text
-            when (getTokenType(leaf, text)) {
-                TokenType.VARIABLE_DECLARATION -> {
-                    val referenceType = getVariableAssigmentType(leaf)
-                    if (referenceType == null)
-                        localScope.addVariable(Variable(name))
-                    else{
-                        val exemplar = Variable(name)
-                        val paramList = localScope.getType(referenceType)?.parameterNameList?.map { it.name }
-                        if (paramList == null)
-                            System.err.println("type not found: $referenceType")
-                        else
-                            exemplar.fields = paramList
-                        localScope.addExemplar(exemplar)
-                    }
-                }
-            }
-        }
-
-        super.visitFunctionBody(ctx)
-    }
 
     override fun visitFunctionDeclaration(ctx: TdlParser.FunctionDeclarationContext) {
         val name = ctx.simpleIdentifier().Identifier().text
-        val localScope = Scope(name, globalScope)
-        val params = getParametersNames(ctx.parameters())
+        val params = ctx.parameters().parameter().map{ Parameter(it.text) }
+        val function = CallableEntity(name, params)
+        globalScope.addFunction(function)
 
-        params.forEach { localScope.addVariable(Variable(it)) }
-        globalScope.addFunction(CallableEntity(name, params.map { Parameter(it) }))
-
+        val body = ctx.functionBody()
+        if (body != null)
+            BlockVisitor(globalScope, ctx, text, parser).visitFunctionBody(body)
         super.visitFunctionDeclaration(ctx)
-    }
-
-    private fun getParametersNames(ctx: TdlParser.ParametersContext): List<String> {
-        return ctx.children.filterIsInstance<TdlParser.ParameterContext>().map { it.text }
-    }
-
-    private fun getVariableAssigmentType(token: Token): String? {
-        val definitionStart = token.stopIndex + 1
-        val definitionEnd = text.indexOf(";", startIndex = definitionStart)
-        val definition = text.slice(definitionStart until definitionEnd)
-        if (definition.contains(" as ")) {
-            // casting var to type
-            val type = definition.split(" as ")[1]
-            return type.replace(" ", "")
-        }
-        return null
     }
 
     override fun visitTypeDeclaration(ctx: TdlParser.TypeDeclarationContext) {
         val name = ctx.simpleIdentifier().Identifier().text
         val params = ctx.primaryConstructor().parameters().parameter().map { Parameter(it.text) }
 
+        if (params.isEmpty()) {
+            System.err.println("empty type: $name")
+            super.visitTypeDeclaration(ctx)
+            return
+        }
+
         globalScope.addType(CallableEntity(name, params))
 
         super.visitTypeDeclaration(ctx)
     }
 
-    // collecting global-scoped variables
+    override fun visitInvokeOnDeclaration(ctx: TdlParser.InvokeOnDeclarationContext) {
+        val name = ctx.simpleIdentifier().Identifier().text
+        val type = globalScope.getType(name)
+        if (type == null) {
+            System.err.println("invoke on can't be earlier than type declaration: $name")
+            return super.visitInvokeOnDeclaration(ctx)
+        }
+        val invokeOn = CallableEntity(name, type.parameterNameList)
+        globalScope.addInvokeOn(invokeOn)
+        super.visitInvokeOnDeclaration(ctx)
+    }
+
+    // collecting global-scoped variables todo
     override fun visitTopLevelObject(ctx: TdlParser.TopLevelObjectContext) {
         val name = (ctx.children.find {
             it is TdlParser.DeclarationContext && it.assignment() != null

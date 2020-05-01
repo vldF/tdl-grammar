@@ -32,4 +32,8 @@ abstract class EntityBase {
 
         return true
     }
+
+    override fun toString(): String {
+        return name
+    }
 }

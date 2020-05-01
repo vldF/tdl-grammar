@@ -62,7 +62,8 @@ enum class TokenType {
     VARIABLE,
     VARIABLE_DECLARATION,
     TYPE,
-    MEMBER
+    MEMBER,
+    CAST
 }
 
 
@@ -75,4 +76,20 @@ fun getTypedVariableByMemberToken(token: Token, text: String): String {
     }
 
     return res.reverse().toString()
+}
+
+fun getParametersNames(ctx: TdlParser.ParametersContext): List<String> {
+    return ctx.children.filterIsInstance<TdlParser.ParameterContext>().map { it.text }
+}
+
+fun getParamsCount(token: Token, text: String): Int {
+    val startBracket = token.stopIndex + 1
+    val stopBracket = text.slice(startBracket until text.length).indexOfFirst { it == ')' } + startBracket
+    val split = text.slice(startBracket..stopBracket)
+    val charCount = split.count { it != ' ' }
+    return if (charCount == 2) { // empty brackets
+        0
+    } else {
+        1 + split.count { it == ',' }
+    }
 }
