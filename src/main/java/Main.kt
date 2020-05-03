@@ -2,6 +2,19 @@ import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 
+internal class ErrorPrinter : BaseErrorListener() {
+    override fun syntaxError(
+            recognizer: Recognizer<*, *>?,
+            offendingSymbol: Any,
+            line: Int,
+            charPositionInLine: Int,
+            msg: String,
+            e: RecognitionException?
+    ) {
+        throw ParseCancellationException("line $line:$charPositionInLine $msg")
+    }
+}
+
 private fun parseFile(file: File): TdlParser {
     val lexer = TdlLexer(ANTLRFileStream(file.absolutePath))
     val tokenStream = CommonTokenStream(lexer)
@@ -34,17 +47,4 @@ fun main(args: Array<String>) {
         successful++
     }
     println("Total files: $totalFiles; successfully parsed: $successful")
-}
-
-internal class ErrorPrinter : BaseErrorListener() {
-    override fun syntaxError(
-        recognizer: Recognizer<*, *>?,
-        offendingSymbol: Any,
-        line: Int,
-        charPositionInLine: Int,
-        msg: String,
-        e: RecognitionException?
-    ) {
-        throw ParseCancellationException("line $line:$charPositionInLine $msg")
-    }
 }

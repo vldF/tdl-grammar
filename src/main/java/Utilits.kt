@@ -93,3 +93,36 @@ fun getParamsCount(token: Token, text: String): Int {
         1 + split.count { it == ',' }
     }
 }
+
+fun exploreStatement(ctx: ParseTree, text: String, scope: Scope) {
+    val leafs = getFlattenLeaf(ctx)
+    for (leaf in leafs) {
+        val name = leaf.text
+        when (getTokenType(leaf, text)) {
+            TokenType.CALLABLE -> {
+                val paramsCount = getParamsCount(leaf, text)
+                if (scope.getCallable(name, paramsCount) == null)
+                    if (scope.getCallable(name) != null)
+                        System.err.println("unmatching arguments: $name")
+                    else
+                        System.err.println("unresolved: $name")
+            }
+            TokenType.VARIABLE -> {
+                if (scope.getVariable(name) == null)
+                    System.err.println("unresolved: $name")
+            }
+            TokenType.MEMBER -> {
+                val exemplar = scope.getExemplar(getTypedVariableByMemberToken(leaf, text))
+                if (exemplar == null)
+                    System.err.println("unresolved: $name")
+            }
+            else -> {
+                println("ignored statement: $name")
+            }
+        }
+    }
+}
+
+fun exploreAssignment() {
+
+}

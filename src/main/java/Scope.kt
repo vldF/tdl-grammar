@@ -21,7 +21,9 @@ class Scope(val name: String, baseScope: Scope?) {
 
     fun getUnused(): List<UnusedStorage> {
         val unusedVariables = variables.values.filter { !it.isUsed }
-        val unusedFunctions = functions.values.map { it.filter { f -> !f.isUsed } }.flatten()
+        val unusedFunctions = functions.values.map {
+            it.filter { f -> !f.isUsed && !(f.name == "main" && f.parameterNameList.isEmpty()) }
+        }.flatten()
         val unusedTypes = types.values.filter {
             !it.isUsed && (parent != null || it.name != "String" && it.name != "Integer")
         }

@@ -1,17 +1,15 @@
 import ast.objects.Variable
 
 class BlockVisitor(private val globalScope: Scope,
-                   declarationContext: TdlParser.FunctionDeclarationContext,
+                   name: String,
+                   paramNames: List<String>,
                    private val text: String,
                    private val parser: TdlParser
 ) : TdlParserBaseVisitor<Unit>() {
-    private val localScope: Scope = Scope(
-            declarationContext.simpleIdentifier().Identifier().text,
-            globalScope
-    )
+    private val localScope: Scope = Scope(name, globalScope)
 
     init {
-        declarationContext.parameters().parameter().forEach { localScope.addVariable(Variable(it.text)) }
+        paramNames.forEach { localScope.addVariable(Variable(it)) }
     }
 
     override fun visitStatement(ctx: TdlParser.StatementContext) {
