@@ -1,19 +1,16 @@
-import TokenType.*
 import ast.objects.CallableEntity
 import ast.objects.Parameter
 import ast.objects.Variable
-import org.antlr.v4.runtime.Token
-import org.antlr.v4.runtime.tree.ParseTree
 
 
 class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
     private val text = parser.inputStream.text
+    private val visitResult = VisitErrors()
 
     init {
         globalScope.addType(CallableEntity("String", listOf()))
         globalScope.addType(CallableEntity("Integer", listOf()))
     }
-
 
     override fun visitFunctionDeclaration(ctx: TdlParser.FunctionDeclarationContext) {
         val name = ctx.simpleIdentifier().Identifier().text
@@ -21,11 +18,20 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
         val params = paramNames.map{ Parameter(it) }
 
         val function = CallableEntity(name, params)
-        globalScope.addFunction(function)
+        if (!globalScope.addFunction(function)) {
+            val result = Ambiguity(name, "global", ctx.getStart().line)
+            visitResult.add(result)
+            // end of parsing this tree
+            return
+        }
 
         val body = ctx.functionBody()
-        if (body != null)
-            BlockVisitor(globalScope, name, paramNames, text, parser).visitFunctionBody(body)
+        if (body != null) {
+            val localVisitResult = VisitErrors()
+            visitResult.addChild(localVisitResult)
+            val localScope = Scope(name, globalScope)
+            BlockVisitor(localScope, name, paramNames, text, localVisitResult, parser).visitFunctionBody(body)
+        }
         super.visitFunctionDeclaration(ctx)
     }
 
@@ -39,7 +45,10 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
             return
         }
 
-        globalScope.addType(CallableEntity(name, params))
+        if(!globalScope.addType(CallableEntity(name, params)))
+            visitResult.add(
+                    Ambiguity(name, "global", ctx.start.line)
+            )
 
         super.visitTypeDeclaration(ctx)
     }
@@ -50,10 +59,21 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
         val paramsList = type.parameterNameList.map { it.name }
 
         val invokeOn = CallableEntity(name, listOf())
-        globalScope.addInvokeOn(invokeOn)
+        if(!globalScope.addInvokeOn(invokeOn))
+            visitResult.add(
+                    Ambiguity(name, "global", ctx.start.line)
+            )
 
-        if(ctx.functionBody() != null)
-            BlockVisitor(globalScope, name, paramsList, text, parser).visitFunctionBody(ctx.functionBody())
+        if(ctx.functionBody() != null) {
+            val localVisitResult = VisitErrors()
+            visitResult.addChild(localVisitResult)
+            val localScope = Scope(name, globalScope)
+            val thisVariable = Variable("this")
+            thisVariable.reference = type
+            localScope.addExemplar(thisVariable)
+            BlockVisitor(localScope, name, paramsList, text, localVisitResult, parser)
+                    .visitFunctionBody(ctx.functionBody())
+        }
 
         super.visitInvokeOnDeclaration(ctx)
     }
@@ -61,93 +81,16 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
     // collecting global-scoped variables todo
     override fun visitTopLevelObject(ctx: TdlParser.TopLevelObjectContext) {
         // adding variable to global scope
-        val variableName = (ctx.children.find {
-            it is TdlParser.DeclarationContext && it.assignment() != null
-        } as TdlParser.DeclarationContext?)?.assignment()?.children?.get(0)?.text
 
-
-        if (variableName != null) {
-            val leafs = getFlattenLeaf(ctx.declaration().assignment().expression())
-            if (leafs.size == 1) {
-                for (leaf in leafs) {
-                    val name = leaf.text
-                    when (getTokenType(leaf, text)) {
-                        CALLABLE -> {
-                            val params = getParamsCount(leaf, text)
-                            val callable = globalScope.getInvokeOn(name, params)
-                            if (callable == null)
-                                System.err.println("unresolved callable: $name")
-                        }
-                        VARIABLE -> {
-                            val variable = globalScope.getVariable(name)
-                            if (variable == null)
-                                System.err.println("unresolved variable: $name")
-                        }
-                        VARIABLE_DECLARATION -> TODO()
-                        TYPE -> TODO()
-                        MEMBER -> TODO()
-                        CAST -> TODO()
-                    }
-                }
-            }
-            for (leaf in leafs) {
-                val name = leaf.text
-                when (getTokenType(leaf, text)) {
-                    VARIABLE -> {
-                        if (globalScope.getVariable(name) == null)
-                            System.err.println("unresolved global variable: $name")
-                    }
-                    MEMBER -> {
-                        val exemplarName = getTypedVariableByMemberToken(leaf, text)
-                        val exemplar = globalScope.getExemplar(exemplarName)
-                        val reference = exemplar?.reference
-
-                        if (exemplar == null)
-                            System.err.println("unresolved type exemplar $exemplarName")
-                        else if (reference?.parameterNameList?.find { it.name == name } == null)
-                            System.err.println("unresolved global member $name of type $exemplarName")
-                    }
-                    CALLABLE -> {
-                        val paramsCount = getParamsCount(leaf, text)
-                        val callable = globalScope.getCallable(name, paramsCount)
-
-                        if (callable == null) {
-                            if (globalScope.getCallable(name) == null)
-                                System.err.println("unresolved callable: $name")
-                            else
-                                System.err.println("unmatching arguments: $name")
-                        }
-                    }
-                    CAST -> {
-                        val asExpression = ctx
-                                .declaration()
-                                .assignment()
-                                .expression()
-                                .asExpression()
-                        val leftName = asExpression.additiveExpression().text
-                        val typeName = asExpression.type().text
-
-                        if (globalScope.getVariable(leftName) == null)
-                            System.err.println("unresolved global variable: $leftName")
-                        if (globalScope.getType(typeName) == null)
-                            System.err.println("unresolved type: $leftName")
-                    }
-                    TYPE -> {
-                        val ref = globalScope.getType(name)
-                        if (ref == null)
-                            System.err.println("unresolved type: $name")
-                        else {
-                            val exemplar = Variable(variableName)
-                            exemplar.reference = ref
-                            exemplar.fields = ref.parameterNameList.map { it.name }
-                            globalScope.addExemplar(exemplar)
-                        }
-                    }
-                    else -> println("skipped global $name")
-                }
-            }
-
+        val assignment = ctx.declaration().assignment()
+        if (assignment != null) {
+            //if this is assignment
+            val localVisitResult = exploreAssignment(assignment, globalScope, text, "global", parser)
+            visitResult.addChild(localVisitResult)
         }
+
         super.visitTopLevelObject(ctx)
     }
+
+    fun getVisitResult() = visitResult
 }

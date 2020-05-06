@@ -1,0 +1,7 @@
+type A(x);
+
+function f(p) {
+    if (p > 1) {
+        p as A;
+    };
+};

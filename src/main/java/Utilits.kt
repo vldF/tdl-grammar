@@ -1,3 +1,4 @@
+import ast.objects.Variable
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
@@ -67,62 +68,233 @@ enum class TokenType {
 }
 
 
-fun getTypedVariableByMemberToken(token: Token, text: String): String {
-    var i = token.startIndex - 2 // -2= -1 - 1, where first -1 points to dot, second -1 points to end of var
-    val res = StringBuffer()
-    while (i >= 0 && text[i] !in listOf('.', ',', ' ', '(', ')', '\n')) { // todo: add other token separators
-        res.append(text[i])
-        i--
-    }
+fun getTypedVariableByMemberToken(token: Token, parser: TdlParser): String =
+    parser.tokenStream[token.tokenIndex-2].text // -1 is '.', -2 is searching token name
 
-    return res.reverse().toString()
-}
-
-fun getParametersNames(ctx: TdlParser.ParametersContext): List<String> {
-    return ctx.children.filterIsInstance<TdlParser.ParameterContext>().map { it.text }
-}
 
 fun getParamsCount(token: Token, text: String): Int {
     val startBracket = token.stopIndex + 1
-    val stopBracket = text.slice(startBracket until text.length).indexOfFirst { it == ')' } + startBracket
-    val split = text.slice(startBracket..stopBracket)
-    val charCount = split.count { it != ' ' }
-    return if (charCount == 2) { // empty brackets
-        0
-    } else {
-        1 + split.count { it == ',' }
+    var i = startBracket
+    var bracketsPairs = 0
+    var paramsCount = 0
+    var zeroCommaFlag = false
+
+    while (i < text.length) {
+        when (text[i]) {
+            '(' -> bracketsPairs++
+            ')' -> bracketsPairs--
+            ',' -> {
+                if (bracketsPairs == 1)
+                    paramsCount++
+            }
+            ' ' -> {}
+            else -> zeroCommaFlag = true
+        }
+        if (bracketsPairs == 0) {
+            if (zeroCommaFlag && paramsCount == 0)
+                paramsCount = 1
+            else if (paramsCount != 0)
+                paramsCount += 1
+
+            break
+        }
+        i++
     }
+
+    return paramsCount
 }
 
-fun exploreStatement(ctx: ParseTree, text: String, scope: Scope) {
+fun exploreStatement(ctx: ParseTree, scope: Scope, text: String, parentName: String, parser: TdlParser): VisitErrors {
+    val visitResults = VisitErrors()
+
     val leafs = getFlattenLeaf(ctx)
     for (leaf in leafs) {
         val name = leaf.text
         when (getTokenType(leaf, text)) {
             TokenType.CALLABLE -> {
                 val paramsCount = getParamsCount(leaf, text)
-                if (scope.getCallable(name, paramsCount) == null)
-                    if (scope.getCallable(name) != null)
-                        System.err.println("unmatching arguments: $name")
+                if (scope.getCallable(name, paramsCount) == null) {
+                    val variants = scope.getCallable(name)
+                    if (variants != null)
+                        visitResults.add(
+                                UnmatchingArgument(name, parentName, leaf.line, variants)
+                        )
                     else
-                        System.err.println("unresolved: $name")
+                        visitResults.add(
+                                Unresolved(name, parentName, leaf.line)
+                        )
+                }
             }
             TokenType.VARIABLE -> {
                 if (scope.getVariable(name) == null)
-                    System.err.println("unresolved: $name")
+                    visitResults.add(
+                            Unresolved(name, parentName, leaf.line)
+                    )
             }
             TokenType.MEMBER -> {
-                val exemplar = scope.getExemplar(getTypedVariableByMemberToken(leaf, text))
+                val exemplar = scope.getExemplar(getTypedVariableByMemberToken(leaf, parser))
                 if (exemplar == null)
-                    System.err.println("unresolved: $name")
+                    visitResults.add(
+                            Unresolved(name, parentName, leaf.line)
+                    )
             }
             else -> {
                 println("ignored statement: $name")
             }
         }
     }
+
+    return visitResults
 }
 
-fun exploreAssignment() {
+fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: String, parentName: String, parser: TdlParser): VisitErrors {
+    val variableName = ctx.assignableExpression().simpleIdentifier().Identifier().text
+    val expression = ctx.expression()
+    val visitResult = VisitErrors()
+    // if cast (newVar = var as Type)
+    if (expression.asExpression() != null) {
+        val typeName = expression.asExpression().type().text
+        val callableType = scope.getType(typeName)
 
+        if (callableType == null) {
+            visitResult.add(
+                    Unresolved(typeName, parentName, expression.start.line)
+            )
+        } else {
+            val nameOfVariableOnTheLeft = ctx.expression()
+                    .asExpression()
+                    .additiveExpression()
+                    .text
+            val variableOnTheLeft = scope.getVariable(nameOfVariableOnTheLeft)
+            if (variableOnTheLeft == null)
+                visitResult.add(
+                        Unresolved(nameOfVariableOnTheLeft, parentName, expression.start.line)
+                )
+            else {
+                val variable = Variable(variableName)
+                variable.fields = callableType.parameterNameList.map { it.name }
+                variable.reference = callableType
+                if(!scope.addExemplar(variable))
+                    visitResult.add(
+                            Ambiguity(variableName, parentName, expression.start.line)
+                    )
+            }
+        }
+    } else{ // case for all non-as assignments
+        val leafs = getFlattenLeaf(expression)
+        if (leafs.size == 1 && getTokenType(leafs.first(), text) == TokenType.CALLABLE) {
+            // if this is assigment with one entity on the right part
+            val leaf = leafs.first()
+            val name = leaf.text
+            val params = getParamsCount(leaf, text)
+            val typeCallable = scope.getType(name, params)
+
+            //todo refactor?
+            if (typeCallable != null) {
+                // if this is type constructor
+                val variable = Variable(variableName)
+                variable.fields = typeCallable.parameterNameList.map { it.name }
+                variable.reference = typeCallable
+                if (!scope.addExemplar(variable))
+                    visitResult.add(
+                            Ambiguity(variableName, parentName, expression.start.line)
+                    )
+            } else if (scope.getCallable(name, params) == null) {
+                //if this is access to exemplar?
+                val reference = scope.getExemplar(name)?.reference
+                if (reference == null || scope.getInvokeOn(reference.name) == null) {
+                    val variants = scope.getCallable(name)
+                    if (variants != null)
+                        visitResult.add(
+                                UnmatchingArgument(name, parentName, expression.start.line, variants)
+                        )
+                    else
+                        visitResult.add(
+                                Unresolved(name, parentName, expression.start.line)
+                        )
+                }
+            }  else {
+                // this is function call, invoke on, ...
+                val callable = scope.getCallable(name, params)
+                if (callable == null)
+                    visitResult.add(
+                            Unresolved(name, parentName, expression.start.line)
+                    )
+                val variable = Variable(variableName)
+                if (!scope.addVariable(variable))
+                    visitResult.add(
+                            Ambiguity(variableName, parentName, expression.start.line)
+                    )
+            }
+        } else {
+            // if this is assigment of expression
+            for (leaf in leafs) {
+                val name = leaf.text
+                when (getTokenType(leaf, text)) {
+                    TokenType.CALLABLE -> {
+                        val paramsCount = getParamsCount(leaf, text)
+                        if (scope.getCallable(name, paramsCount) == null) {
+                            val variants = scope.getCallable(name)
+                            if (variants == null)
+                                visitResult.add(
+                                        Unresolved(name, parentName, expression.start.line)
+                                )
+                            else
+                                visitResult.add(
+                                        UnmatchingArgument(name, parentName, expression.start.line, variants)
+                                )
+                        }
+                    }
+                    TokenType.VARIABLE -> {
+                        if (scope.getVariable(name) == null)
+                            visitResult.add(
+                                    Unresolved(name, parentName, expression.start.line)
+                            )
+                    }
+                    TokenType.MEMBER -> {
+                        val typedVariable = getTypedVariableByMemberToken(leaf, parser)
+                        if (scope.getVariable(typedVariable) == null)
+                            visitResult.add(
+                                    Unresolved(name, parentName, expression.start.line)
+                            )
+                    }
+                    else -> {
+                        println("skipped resolve of $name")
+                    }
+                }
+            }
+
+            if(!scope.addVariable(Variable(variableName)))
+                visitResult.add(
+                        Ambiguity(variableName, parentName, expression.start.line)
+                )
+        }
+    }
+
+    return visitResult
+}
+
+fun exploreAsOperator(ctx: TdlParser.AsExpressionContext, scope: Scope, parentName: String): VisitErrors {
+    val visitResult = VisitErrors()
+
+    val variableName = ctx.additiveExpression().text
+    val typeName = ctx.type().text
+    val type = scope.getType(typeName)
+
+    if (type == null) {
+        visitResult.add(
+                Unresolved(typeName, parentName, ctx.start.line)
+        )
+        return visitResult
+    }
+
+    val variable = Variable(variableName)
+    variable.fields = type.parameterNameList.map { it.name }
+    variable.reference = type
+    if (!scope.addExemplar(variable))
+        visitResult.add(
+                Ambiguity(variableName, parentName, ctx.type().start.line)
+        )
+
+    return visitResult
 }

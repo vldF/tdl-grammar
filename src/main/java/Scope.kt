@@ -1,4 +1,4 @@
-import ast.UnusedStorage
+import UnusedStorage
 import ast.objects.CallableEntity
 import ast.objects.EntityBase
 import ast.objects.Variable
@@ -27,7 +27,7 @@ class Scope(val name: String, baseScope: Scope?) {
         val unusedTypes = types.values.filter {
             !it.isUsed && (parent != null || it.name != "String" && it.name != "Integer")
         }
-        val unusedExemplars = typesExemplar.values.filter { !it.isUsed }
+        val unusedExemplars = typesExemplar.values.filter { !it.isUsed && it.name != "this" }
         val unusedInvokesOn = invokesOn.values.filter { !it.isUsed }
 
         val storage = UnusedStorage(
@@ -111,17 +111,17 @@ class Scope(val name: String, baseScope: Scope?) {
         return exemplar
     }
 
-    fun addVariable(variable: Variable) {
-        if (variables[variable.name] != null) {
-            throw Exception("ambiguity ${variable.name}")
-        }
+    fun addVariable(variable: Variable): Boolean {
+        if (variables[variable.name] != null)
+            return false
         variables[variable.name] = variable
+        return true
     }
 
-    fun addFunction(func: CallableEntity) {
+    fun addFunction(func: CallableEntity): Boolean {
         when {
             functions[func.name]?.any { it.parameterNameList.size == func.parameterNameList.size } == true -> {
-                throw Exception("ambiguity")
+                return false
             }
             functions[func.name] != null -> {
                 functions[func.name]!!.add(func)
@@ -131,27 +131,46 @@ class Scope(val name: String, baseScope: Scope?) {
             }
         }
 
+        return true
     }
 
-    fun addType(type: CallableEntity) {
-        if (types[type.name] != null) {
-            throw Exception("ambiguity")
-        }
+    fun addType(type: CallableEntity): Boolean {
+        if (types[type.name] != null)
+            return false
         types[type.name] = type
+        return true
     }
 
-    fun addInvokeOn(invoke: CallableEntity) {
-        if (invokesOn[invoke.name] != null) {
-            throw Exception("ambiguity")
-        }
+    fun addInvokeOn(invoke: CallableEntity): Boolean {
+        if (invokesOn[invoke.name] != null)
+            return false
+
         invokesOn[invoke.name] = invoke
-
+        return true
     }
 
-    fun addExemplar(variable: Variable) {
+    fun addExemplar(variable: Variable): Boolean {
         if (typesExemplar[variable.name] != null) {
-            throw Exception("ambiguity") // todo
+            return false
         }
         typesExemplar[variable.name] = variable
+        return true
+    }
+
+    fun importGlobalFromScope(another: Scope) {
+        if (
+            variables.isNotEmpty() ||
+            functions.isNotEmpty() ||
+            types.size > 2 ||
+            typesExemplar.isNotEmpty() ||
+            invokesOn.isNotEmpty()
+        )
+            throw IllegalStateException("this scope isn't empty")
+
+        variables.putAll(another.variables)
+        functions.putAll(another.functions)
+        types.putAll(another.types)
+        typesExemplar.putAll(another.typesExemplar)
+        invokesOn.putAll(another.invokesOn)
     }
 }

@@ -3,7 +3,7 @@ type Test(a, b, c);
 function func(a);
 function func(a, b);
 function func(a, b, c);
-function func(a, b, c, d);
+function func(a, b, c, d); // unused
 
 invoke on Test {
     return func(a) + func(a, b) + func(a, b, c);
