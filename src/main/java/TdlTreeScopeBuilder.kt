@@ -79,10 +79,9 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
         super.visitInvokeOnDeclaration(ctx)
     }
 
-    // collecting global-scoped variables todo
+    // collecting global-scoped variables
     override fun visitTopLevelObject(ctx: TdlParser.TopLevelObjectContext) {
         // adding variable to global scope
-
         val assignment = ctx.declaration().assignment()
         if (assignment != null) {
             //if this is assignment

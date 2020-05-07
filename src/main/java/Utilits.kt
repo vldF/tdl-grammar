@@ -28,33 +28,46 @@ fun getFlattenLeaf(tree: ParseTree): MutableList<Token> {
  * If after last char of token ., this token is `TokenType.VARIABLE`
  * If before token word "as", this is `TokenType.TYPE`
  * In other cases, `TokenType.VARIABLE` will be returned
- *
- * Works bad with wrong spaces ("type. member", for example)
  */
 
-fun getTokenType(token: Token, text: String): TokenType {
-    val endPosition = token.stopIndex
-    val startPosition = token.startIndex
-    if (endPosition + 1 >= text.length)
-        throw Exception("error")
-    if (endPosition + 2 < text.length && text[endPosition + 1] == ' ' && text[endPosition + 2] == '=') { // todo
-        return TokenType.VARIABLE_DECLARATION
+fun getTokenType(token: Token, parser: TdlParser): TokenType {
+    val idx = token.tokenIndex
+    val stream = parser.tokenStream
+
+    var nextToken: Token? = null
+    var prevToken: Token? = null
+
+    //getting next and previous tokens
+    var i = idx + 1
+    while (i < stream.size()) {
+        if (stream[i].channel == 0) { // 0 is channel for unhidden tokens
+            nextToken = stream[i]
+            break
+        }
+        i++
     }
-    when (text[endPosition + 1]) {
-        '(' -> return TokenType.CALLABLE
-        '.' -> return TokenType.VARIABLE
+    i = idx - 1
+    while (i > 0) {
+        if (stream[i].channel == 0) { // 0 is channel for unhidden tokens
+            prevToken = stream[i]
+            break
+        }
+        i--
     }
 
-    if (startPosition <= 2) // 2 is some spaces in start of file
-        return TokenType.VARIABLE
+    val prevText = prevToken?.text
 
-    if (text.slice((startPosition-3..startPosition-2)) == "as") {
-        return TokenType.TYPE
+    when (nextToken?.text) {
+        "=" -> return TokenType.VARIABLE_DECLARATION
+        "(" -> return TokenType.CALLABLE
+        "." -> return TokenType.VARIABLE
     }
 
-    if (text[startPosition-1] == '.') {
-        return TokenType.MEMBER
+    when (prevText) {
+        "as" -> return TokenType.TYPE
+        "." -> return TokenType.MEMBER
     }
+
     return TokenType.VARIABLE
 }
 
@@ -109,7 +122,7 @@ fun exploreStatement(ctx: ParseTree, scope: Scope, text: String, parentName: Str
     val leafs = getFlattenLeaf(ctx)
     for (leaf in leafs) {
         val name = leaf.text
-        when (getTokenType(leaf, text)) {
+        when (getTokenType(leaf, parser)) {
             TokenType.CALLABLE -> {
                 val paramsCount = getParamsCount(leaf, text)
                 if (scope.getCallable(name, paramsCount) == null) {
@@ -183,14 +196,13 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: Stri
         }
     } else{ // case for all non-as assignments
         val leafs = getFlattenLeaf(expression)
-        if (leafs.size == 1 && getTokenType(leafs.first(), text) == TokenType.CALLABLE) {
+        if (leafs.size == 1 && getTokenType(leafs.first(), parser) == TokenType.CALLABLE) {
             // if this is assigment with one entity on the right part
             val leaf = leafs.first()
             val name = leaf.text
             val params = getParamsCount(leaf, text)
             val typeCallable = scope.getType(name, params)
 
-            //todo refactor?
             if (typeCallable != null) {
                 // if this is type constructor
                 val variable = Variable(variableName)
@@ -221,6 +233,7 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: Stri
                     visitResult.add(
                             Unresolved(name, parentName, expression.start.line)
                     )
+
                 val variable = Variable(variableName)
                 if (!scope.addVariable(variable))
                     visitResult.add(
@@ -231,7 +244,7 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: Stri
             // if this is assigment of expression
             for (leaf in leafs) {
                 val name = leaf.text
-                when (getTokenType(leaf, text)) {
+                when (getTokenType(leaf, parser)) {
                     TokenType.CALLABLE -> {
                         val paramsCount = getParamsCount(leaf, text)
                         if (scope.getCallable(name, paramsCount) == null) {

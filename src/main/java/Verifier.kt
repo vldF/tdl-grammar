@@ -29,7 +29,6 @@ class Verifier(private val filesLocation: String = "") {
             else null
 
     private fun verify(parser: TdlParser, name: String) {
-        //todo parser.buildParseTree = true
         if (visited[name] != null) {
             println("parsing of file $name skipped")
             return
@@ -44,8 +43,7 @@ class Verifier(private val filesLocation: String = "") {
         val tree = TdlTreeScopeBuilder(parser, globalScope)
         tree.visit(ctx)
 
-        visitErrors[name] = tree.getVisitResult() // todo
-
+        visitErrors[name] = tree.getVisitResult()
     }
 
     private fun doImports(ctx: TdlParser.TdlFileContext, scope: Scope) {
