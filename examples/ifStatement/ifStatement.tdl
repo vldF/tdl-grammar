@@ -1,0 +1,13 @@
+type A(x);
+
+function print(x);
+
+function main() {
+    x = 0;
+    if (x > 1 + h) {  // unresolved
+        x as A;
+        print(t);  // unresolved
+    };
+
+    print(x.x);  // ok
+}

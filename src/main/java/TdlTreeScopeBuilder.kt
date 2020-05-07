@@ -1,5 +1,4 @@
 import ast.objects.CallableEntity
-import ast.objects.Parameter
 import ast.objects.Variable
 
 
@@ -15,7 +14,7 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
     override fun visitFunctionDeclaration(ctx: TdlParser.FunctionDeclarationContext) {
         val name = ctx.simpleIdentifier().Identifier().text
         val paramNames = ctx.parameters().parameter().map{ it.text }
-        val params = paramNames.map{ Parameter(it) }
+        val params = paramNames.map{ Variable(it) }
 
         val function = CallableEntity(name, params)
         if (!globalScope.addFunction(function)) {
@@ -37,10 +36,12 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
 
     override fun visitTypeDeclaration(ctx: TdlParser.TypeDeclarationContext) {
         val name = ctx.simpleIdentifier().Identifier().text
-        val params = ctx.primaryConstructor().parameters().parameter().map { Parameter(it.text) }
+        val params = ctx.primaryConstructor().parameters().parameter().map { Variable(it.text) }
 
         if (params.isEmpty()) {
-            System.err.println("empty type: $name")
+            visitResult.add(
+                    EmptyType(name, "global", ctx.start.line)
+            )
             super.visitTypeDeclaration(ctx)
             return
         }
@@ -71,7 +72,7 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
             val thisVariable = Variable("this")
             thisVariable.reference = type
             localScope.addExemplar(thisVariable)
-            BlockVisitor(localScope, name, paramsList, text, localVisitResult, parser)
+            BlockVisitor(localScope, name, paramsList, text, localVisitResult, parser, importParamsFromScope = true)
                     .visitFunctionBody(ctx.functionBody())
         }
 

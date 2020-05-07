@@ -1,0 +1,14 @@
+import file first;
+
+function bar(t, j) {
+    t as A;
+    t();
+
+    d = j as A;
+
+    return t.x - d.x * foo(1, 2, "3"); // unmatching arguments for foo
+};
+
+function main() {
+    bar(1, 12);
+};

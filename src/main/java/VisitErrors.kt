@@ -34,7 +34,25 @@ data class UnmatchingArgument(
         override val parentName: String,
         override val line: Int,
         val similar: EntityBase
-) : Result()
+) : Result() {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is UnmatchingArgument) return false
+
+        if (entityName != other.entityName) return false
+        if (parentName != other.parentName) return false
+        if (line != other.line) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = entityName.hashCode()
+        result = 31 * result + parentName.hashCode()
+        result = 31 * result + line
+        return result
+    }
+}
 
 data class Ambiguity(
         override val entityName: String,

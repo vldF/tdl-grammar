@@ -1,0 +1,16 @@
+type A(); // empty type
+
+type B(x); // x unused
+
+type C(x, y, z); // y, z are unused
+
+function print(s);
+
+function main() {
+  a = A(); // unresolved
+  b = B(1); // ok
+  c = C(1, "test", 1); // ok
+  d = B(1, "1"); // unmatching arguments
+  print(c.x);
+  //b is unused; a, d is unresolved
+}

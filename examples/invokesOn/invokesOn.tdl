@@ -1,0 +1,22 @@
+type A(x);  // x used
+
+type B(x, y, z);  // y, z are unused
+
+invoke on A {   // unused
+    v = x;      // ok
+    t = this.x; // ok
+    v = x;      // ambiguity
+    z = this.w; // unresolved
+
+    return x; // t is unused
+};
+
+invoke on B {   // unused
+    v = x;      // unused
+    t = this.x; // unused
+    k = this.nonExisted; // unresolved
+    v = x;      // ambiguity
+    j = this.w; // unresolved
+
+    return v + k * v - unres; // unresolved unres
+}

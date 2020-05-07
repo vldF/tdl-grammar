@@ -1,0 +1,13 @@
+type A(x);
+
+function foo(x, y) {
+    return x + y;
+};
+
+invoke on A {
+    return foo(x, this);
+};
+
+function baz() { // unused
+    return 42;
+}

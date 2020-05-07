@@ -1,0 +1,10 @@
+function print(x);
+
+type A(x);
+
+a = A(1);
+b = A(); // unmatching arguments
+
+function main() {
+    print(a.x);
+};

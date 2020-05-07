@@ -1,17 +1,15 @@
-import UnusedStorage
 import ast.objects.CallableEntity
-import ast.objects.EntityBase
 import ast.objects.Variable
-import java.lang.Exception
 
-class Scope(val name: String, baseScope: Scope?) {
-    constructor(): this("root", null)
+class Scope(private val name: String, baseScope: Scope?) {
+    constructor(): this("global", null)
 
     init {
         baseScope?.addChild(name, this)
     }
 
     private val parent: Scope? = baseScope
+    private var basedOn: Scope? = null
     private val variables = mutableMapOf<String, Variable>()
     private val functions = mutableMapOf<String,MutableList<CallableEntity>>()
     private val types = mutableMapOf<String, CallableEntity>()
@@ -21,13 +19,22 @@ class Scope(val name: String, baseScope: Scope?) {
 
     fun getUnused(): List<UnusedStorage> {
         val unusedVariables = variables.values.filter { !it.isUsed }
+
         val unusedFunctions = functions.values.map {
             it.filter { f -> !f.isUsed && !(f.name == "main" && f.parameterNameList.isEmpty()) }
         }.flatten()
+
         val unusedTypes = types.values.filter {
             !it.isUsed && (parent != null || it.name != "String" && it.name != "Integer")
         }
+
+        val unusedFields = types.values.filter {
+            it.parameterNameList.any { p -> !p.isUsed } }.map {
+            UnusedStorage( it.name, unusedFields = it.parameterNameList.filter { p -> !p.isUsed })
+        }
+
         val unusedExemplars = typesExemplar.values.filter { !it.isUsed && it.name != "this" }
+
         val unusedInvokesOn = invokesOn.values.filter { !it.isUsed }
 
         val storage = UnusedStorage(
@@ -41,7 +48,18 @@ class Scope(val name: String, baseScope: Scope?) {
 
         val unusedInChildren = children.values.flatMap { it.getUnused() }
         val res = mutableListOf<UnusedStorage>()
-        res.add(storage)
+        if (
+            unusedVariables.isNotEmpty() ||
+            unusedFunctions.isNotEmpty() ||
+            unusedTypes.isNotEmpty() ||
+            unusedExemplars.isNotEmpty() ||
+            unusedInvokesOn.isNotEmpty()
+        )
+            res.add(storage)
+
+        if (unusedFields.isNotEmpty())
+            res.addAll(unusedFields)
+
         res.addAll(unusedInChildren)
 
         return res
@@ -51,11 +69,11 @@ class Scope(val name: String, baseScope: Scope?) {
         children[name] = scope
     }
 
-    fun getScope(name: String): Scope? = children[name]
-
-
     fun getVariable(name: String): Variable? {
-        val variable = variables[name] ?: typesExemplar[name] ?: parent?.getVariable(name)
+        val variable = variables[name]
+                ?: typesExemplar[name]
+                ?: parent?.getVariable(name)
+                ?: basedOn?.getVariable(name)
         variable?.isUsed = true
         return variable
     }
@@ -64,13 +82,13 @@ class Scope(val name: String, baseScope: Scope?) {
         val type = if (types[name] != null && (types[name]?.parameterNameList?.size == paramsCount || paramsCount == -1))
             types[name]
         else
-            parent?.getType(name, paramsCount)
+            parent?.getType(name, paramsCount) ?: basedOn?.getType(name, paramsCount)
         type?.isUsed = true
         return type
     }
 
     fun getInvokeOn(name: String): CallableEntity? {
-        val invokeOn = invokesOn[name] ?: parent?.getInvokeOn(name)
+        val invokeOn = invokesOn[name] ?: parent?.getInvokeOn(name) ?: basedOn?.getInvokeOn(name)
         invokeOn?.isUsed = true
         return invokeOn
     }
@@ -93,7 +111,7 @@ class Scope(val name: String, baseScope: Scope?) {
                 types[name]
 
             else -> null
-        } ?: return parent?.getCallable(name, paramsCount)
+        } ?: return parent?.getCallable(name, paramsCount) ?: basedOn?.getCallable(name, paramsCount)
 
         res.isUsed = true
         return res
@@ -103,9 +121,13 @@ class Scope(val name: String, baseScope: Scope?) {
             ?: typesExemplar[name]?.reference
             ?: types[name]
             ?: parent?.getCallable(name)
+            ?: basedOn?.getCallable(name)
 
     fun getExemplar(name: String): Variable? {
-        val exemplar = typesExemplar[name] ?: parent?.getExemplar(name)
+        val exemplar = typesExemplar[name]
+                ?: parent?.getExemplar(name)
+                ?: basedOn?.getExemplar(name)
+
         exemplar?.isUsed = true
         invokesOn[exemplar?.reference?.name]?.isUsed = true
         return exemplar
@@ -158,19 +180,6 @@ class Scope(val name: String, baseScope: Scope?) {
     }
 
     fun importGlobalFromScope(another: Scope) {
-        if (
-            variables.isNotEmpty() ||
-            functions.isNotEmpty() ||
-            types.size > 2 ||
-            typesExemplar.isNotEmpty() ||
-            invokesOn.isNotEmpty()
-        )
-            throw IllegalStateException("this scope isn't empty")
-
-        variables.putAll(another.variables)
-        functions.putAll(another.functions)
-        types.putAll(another.types)
-        typesExemplar.putAll(another.typesExemplar)
-        invokesOn.putAll(another.invokesOn)
+        basedOn = another
     }
 }

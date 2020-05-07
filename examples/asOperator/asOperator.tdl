@@ -1,0 +1,10 @@
+type A(x);
+
+type B(i, j, k);
+
+function foo(a, b, c, d) {  // unused
+    a as A;
+    b as B;
+
+    return a.x + b.i + b.j + b.k + c.t + d;  // t is unresolved
+};

@@ -5,12 +5,11 @@ import java.io.File
 class Verifier(private val filesLocation: String = "") {
     private val visited = mutableMapOf<String, Scope>()
     private val visitErrors = hashMapOf<String, VisitErrors>()
-    private val unusedMap = hashMapOf<String, List<UnusedStorage>>()
 
-    fun loadAndVerifyFile(name: String) = loadAdnVerifyFile(File("$filesLocation$name.tdl"))
+    fun loadAndVerifyFile(name: String) = loadAndVerifyFile(File("$filesLocation$name.tdl"))
 
 
-    fun loadAdnVerifyFile(file: File) {
+    fun loadAndVerifyFile(file: File) {
         val lexer = TdlLexer(ANTLRFileStream(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer)
         val parser = TdlParser(tokenStream)
@@ -20,24 +19,10 @@ class Verifier(private val filesLocation: String = "") {
         verify(parser, file.nameWithoutExtension)
     }
 
-    fun getUnused(name: String): List<UnusedStorage>? {
-        return unusedMap[name] ?: run {
-            if (visited[name] == null)
-                null
-            else {
-                unusedMap[name] = visited[name]!!.getUnused()
-                unusedMap[name]
-            }
-        }
-    }
+    fun getUnused(name: String): List<UnusedStorage>? = visited[name]?.getUnused()
 
-    fun getUnused() = unusedMap.toMap()
+    fun getErrors(name: String) = visitErrors[name]?.getAll()
 
-    fun getLastUnused() =
-            if (unusedMap.isNotEmpty()) unusedMap.values.last()
-            else null
-
-    fun getErrors(name: String) = visitErrors[name]
 
     fun getLastErrors() =
             if (visitErrors.isNotEmpty()) visitErrors.values.last()
@@ -59,8 +44,8 @@ class Verifier(private val filesLocation: String = "") {
         val tree = TdlTreeScopeBuilder(parser, globalScope)
         tree.visit(ctx)
 
-        visitErrors[name] = tree.getVisitResult()
-        unusedMap[name] = globalScope.getUnused()
+        visitErrors[name] = tree.getVisitResult() // todo
+
     }
 
     private fun doImports(ctx: TdlParser.TdlFileContext, scope: Scope) {

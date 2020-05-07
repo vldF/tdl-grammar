@@ -5,11 +5,19 @@ class BlockVisitor(private val localScope: Scope,
                    paramNames: List<String>,
                    private val text: String,
                    private val visitErrors: VisitErrors,
-                   private val parser: TdlParser
+                   private val parser: TdlParser,
+                   importParamsFromScope: Boolean = false
 ) : TdlParserBaseVisitor<Unit>() {
 
     init {
-        paramNames.forEach { localScope.addVariable(Variable(it)) }
+        if (importParamsFromScope) {
+            val ref = localScope.getType(name)
+            ref!!.parameterNameList.forEach {
+                localScope.addVariable(it)
+            }
+        } else {
+            paramNames.forEach { localScope.addVariable(Variable(it)) }
+        }
     }
 
     override fun visitStatement(ctx: TdlParser.StatementContext) {
@@ -32,7 +40,7 @@ class BlockVisitor(private val localScope: Scope,
     }
 
     override fun visitAsExpression(ctx: TdlParser.AsExpressionContext) {
-        val results = exploreAsOperator(ctx, localScope, name)
+        val results = exploreAsOperator(ctx, localScope, name, parser)
         visitErrors.addChild(results)
         super.visitAsExpression(ctx)
     }

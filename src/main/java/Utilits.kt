@@ -63,8 +63,7 @@ enum class TokenType {
     VARIABLE,
     VARIABLE_DECLARATION,
     TYPE,
-    MEMBER,
-    CAST
+    MEMBER
 }
 
 
@@ -133,14 +132,16 @@ fun exploreStatement(ctx: ParseTree, scope: Scope, text: String, parentName: Str
             }
             TokenType.MEMBER -> {
                 val exemplar = scope.getExemplar(getTypedVariableByMemberToken(leaf, parser))
-                if (exemplar == null)
+                val param = exemplar?.reference?.parameterNameList?.find { it.name == name }
+                if (exemplar == null || param == null)
                     visitResults.add(
                             Unresolved(name, parentName, leaf.line)
                     )
+                else {
+                    param.isUsed = true
+                }
             }
-            else -> {
-                println("ignored statement: $name")
-            }
+            else -> {}
         }
     }
 
@@ -253,7 +254,8 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: Stri
                     }
                     TokenType.MEMBER -> {
                         val typedVariable = getTypedVariableByMemberToken(leaf, parser)
-                        if (scope.getVariable(typedVariable) == null)
+                        val ref = scope.getExemplar(typedVariable)?.reference
+                        if (ref == null || !ref.parameterNameList.any { it.name == name })
                             visitResult.add(
                                     Unresolved(name, parentName, expression.start.line)
                             )
@@ -274,8 +276,22 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: Stri
     return visitResult
 }
 
-fun exploreAsOperator(ctx: TdlParser.AsExpressionContext, scope: Scope, parentName: String): VisitErrors {
+fun exploreAsOperator(ctx: TdlParser.AsExpressionContext, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
     val visitResult = VisitErrors()
+
+    //checking for this is operator (not assignment)
+    val tokenStream = parser.tokenStream
+    val startTokenIndex = ctx.start.tokenIndex
+    var i = startTokenIndex - 1
+
+    while (i > 0) {
+        if (tokenStream[i].channel == 0)  // 0 is channel for readable tokens
+            if (tokenStream[i].text == "=")
+                return visitResult
+            else
+                break
+        i--
+    }
 
     val variableName = ctx.additiveExpression().text
     val typeName = ctx.type().text

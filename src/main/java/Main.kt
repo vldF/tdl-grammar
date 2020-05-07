@@ -1,9 +1,4 @@
-import ast.objects.CallableEntity
-import ast.objects.Variable
-import org.antlr.v4.runtime.*
-import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
-import java.lang.StringBuilder
 
 
 fun main(args: Array<String>) {
@@ -13,7 +8,7 @@ fun main(args: Array<String>) {
 
     for (source in files) {
         println("validating file: ${source.nameWithoutExtension}")
-        verifier.loadAdnVerifyFile(source)
+        verifier.loadAndVerifyFile(source)
 
         for (err in verifier.getLastErrors()!!.getAll()) {
             when (err) {
@@ -29,44 +24,7 @@ fun main(args: Array<String>) {
 
     }
 
-    for ((name, value) in verifier.getUnused()) {
-        println("  unused for $name")
-        value.forEach { println("    $it") }
-    }
 
     println("done")
 }
 
-data class UnusedStorage(
-        val scopeName: String,
-        val unusedVariables: List<Variable>,
-        val unusedFunctions: List<CallableEntity>,
-        val unusedTypes: List<CallableEntity>,
-        val unusedExemplars: List<Variable>,
-        val unusedInvokesOn: List<CallableEntity>
-) {
-    override fun toString(): String {
-        val res = StringBuilder()
-        if (unusedVariables.isNotEmpty()) {
-            res.append("variables: ").append(unusedVariables.joinToString(separator = ", ")).append("\n")
-        }
-
-        if (unusedFunctions.isNotEmpty()) {
-            res.append("functions: ").append(unusedFunctions.joinToString(separator = ", ")).append("\n")
-        }
-
-        if (unusedTypes.isNotEmpty()) {
-            res.append("types: ").append(unusedTypes.joinToString(separator = ", ")).append("\n")
-        }
-
-        if (unusedExemplars.isNotEmpty()) {
-            res.append("exemplars of types: ").append(unusedExemplars.joinToString(separator = ", ")).append("\n")
-        }
-
-        if (unusedInvokesOn.isNotEmpty()) {
-            res.append("invokes on: ").append(unusedInvokesOn.joinToString(separator = ", ")).append("\n")
-        }
-
-        return if (res.isNotEmpty()) res.insert(0, "unused for scope $scopeName:\n").toString() else ""
-    }
-}
