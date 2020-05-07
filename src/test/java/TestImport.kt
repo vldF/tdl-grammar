@@ -9,7 +9,8 @@ class TestImport {
         verifier.loadAndVerifyFile("second")  // file `first` must be verified automatically
 
         val errorsExpectedSecond = setOf(
-                UnmatchingArgument("foo", "bar", 9, similarHolder)
+                UnmatchingArgument("foo", "bar", 9, similarHolder),
+                Unresolved("bad", "IMPORTS", 0)
         )
 
         val unusedExpectedFirst = setOf(

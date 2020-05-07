@@ -1,6 +1,7 @@
 import org.antlr.v4.runtime.ANTLRFileStream
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
+import java.io.FileNotFoundException
 
 class Verifier(private val filesLocation: String = "") {
     private val visited = mutableMapOf<String, Scope>()
@@ -29,37 +30,45 @@ class Verifier(private val filesLocation: String = "") {
             else null
 
     private fun verify(parser: TdlParser, name: String) {
-        if (visited[name] != null) {
-            println("parsing of file $name skipped")
+        if (visited[name] != null)
             return
-        }
 
         val ctx = parser.tdlFile()
         val globalScope = Scope()
 
         visited[name] = globalScope
-        doImports(ctx, globalScope)
+        val badImports = doImports(ctx, globalScope)
 
         val tree = TdlTreeScopeBuilder(parser, globalScope)
         tree.visit(ctx)
 
         visitErrors[name] = tree.getVisitResult()
+
+        for (import in badImports)
+            visitErrors[name]?.add(
+                    Unresolved(import, "IMPORTS", 0)
+            )
     }
 
-    private fun doImports(ctx: TdlParser.TdlFileContext, scope: Scope) {
+    private fun doImports(ctx: TdlParser.TdlFileContext, scope: Scope): MutableList<String> {
         val importList = ctx.importList().importHeader().map {
             it.simpleIdentifier().Identifier().text
         }
+
+        val badImports = mutableListOf<String>()
 
         for (import in importList) {
             if (visited[import] != null) {
                 scope.importGlobalFromScope(visited[import]!!)
             } else {
-                this.loadAndVerifyFile(import)
+                try {
+                    this.loadAndVerifyFile(import)
+                } catch (_: FileNotFoundException) {}
                 visited[import]?.let { scope.importGlobalFromScope(it) }
-                        ?: throw IllegalStateException("can't import file $import")
+                        ?: badImports.add(import)
             }
         }
+        return badImports
     }
 
 }

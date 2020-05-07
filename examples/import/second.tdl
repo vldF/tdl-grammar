@@ -1,5 +1,5 @@
 import file first;
-
+import file bad;
 function bar(t, j) {
     t as A;
     t();
