@@ -4,8 +4,17 @@ import TdlParser
 import TdlParserBaseVisitor
 import ru.vldf.validator.ast.objects.CallableEntity
 import ru.vldf.validator.ast.objects.Variable
+import java.lang.IllegalStateException
 
-
+/**
+ * Scope builder. Visits all parts of code and calls BlockVisitor for every non-null block.
+ * Use `getVisitResult()` for getting results
+ *
+ * @param parser TdlParser
+ * @param globalScope global scope
+ *
+ * @throws IllegalStateException if invoke on's declaration earlier than type's declaration
+ */
 internal class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
     private val visitResult = VisitErrors()
 
@@ -59,7 +68,7 @@ internal class TdlTreeScopeBuilder(private val parser: TdlParser, private val gl
 
     override fun visitInvokeOnDeclaration(ctx: TdlParser.InvokeOnDeclarationContext) {
         val name = ctx.simpleIdentifier().Identifier().text
-        val type = globalScope.getType(name) ?: throw Exception("invoke on earlier than type declaration: $name")
+        val type = globalScope.getType(name) ?: throw IllegalStateException("invoke on earlier than type declaration: $name")
         val paramsList = type.parameterNameList.map { it.name }
 
         val invokeOn = CallableEntity(name, listOf())

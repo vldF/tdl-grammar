@@ -1,6 +1,8 @@
 package ru.vldf.validator.ast.objects
 
-
+/**
+ * Base class for all entities
+ */
 abstract class EntityBase {
     abstract val name: String
 

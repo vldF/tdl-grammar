@@ -4,6 +4,18 @@ import TdlParser
 import TdlParserBaseVisitor
 import ru.vldf.validator.ast.objects.Variable
 
+/**
+ * Visitor for blocks. When method visitBlock is called, add statements, expressions and assignments
+ * will be visited
+ *
+ * @param localScope scope for storing entities of this block
+ * @param name the name of this block (e.g. function's name)
+ * @param paramNames list of params of function/invoke on has
+ * @param visitErrors all errors will be added to this
+ * @param parser TdlParser
+ * @param importParamsFromScope if this is true, all fields of type with
+ * name `name` will be added to `localScope`
+ */
 internal class BlockVisitor(private val localScope: Scope,
                             private val name: String,
                             paramNames: List<String>,

@@ -2,6 +2,9 @@ package ru.vldf.validator
 
 import ru.vldf.validator.ast.objects.EntityBase
 
+/**
+ * Errors in program
+ */
 class VisitErrors {
     private val children = mutableListOf<VisitErrors>()
     private val results = mutableListOf<Result>()
@@ -19,18 +22,27 @@ class VisitErrors {
     fun addChild(visitErrors: VisitErrors) = children.add(visitErrors)
 }
 
+/**
+ * Base abstract class for all errors
+ */
 abstract class Result {
     abstract val entityName: String
     abstract val parentName: String
     abstract val line: Int
 }
 
+/**
+ * Unresolved error. Creates if entity (variable, function, etc) doesn't exist
+ */
 data class Unresolved(
         override val entityName: String,
         override val parentName: String,
         override val line: Int
 ) : Result()
 
+/**
+ * Unmatching Argument. Creates if function/type with this name exist, but with different arguments
+ */
 data class UnmatchingArgument(
         override val entityName: String,
         override val parentName: String,
@@ -56,12 +68,19 @@ data class UnmatchingArgument(
     }
 }
 
+/**
+ * Ambiguity error. Creates if variable or type with the name already exists.
+ * Or if function with name and params set exist
+ */
 data class Ambiguity(
         override val entityName: String,
         override val parentName: String,
         override val line: Int
 ) : Result()
 
+/**
+ * Empty type error. Creates if type declared without params
+ */
 data class EmptyType(
         override val entityName: String,
         override val parentName: String,

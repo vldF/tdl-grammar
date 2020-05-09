@@ -4,6 +4,9 @@ import ru.vldf.validator.ast.objects.CallableEntity
 import ru.vldf.validator.ast.objects.Variable
 import java.lang.StringBuilder
 
+/**
+ * Stores unused entities. Any of listed params may be empty list
+ */
 data class UnusedStorage(
         val scopeName: String,
         val unusedVariables: List<Variable> = listOf(),

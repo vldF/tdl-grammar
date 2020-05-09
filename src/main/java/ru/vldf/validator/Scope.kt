@@ -3,6 +3,12 @@ package ru.vldf.validator
 import ru.vldf.validator.ast.objects.CallableEntity
 import ru.vldf.validator.ast.objects.Variable
 
+/**
+ * Storing scope
+ *
+ * @param name the name of scope
+ * @param baseScope scope that will bi set as parent. May be `null` if this is global scope
+ */
 internal class Scope(private val name: String, baseScope: Scope?) {
     constructor(): this("global", null)
 
