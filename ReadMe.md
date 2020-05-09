@@ -1,7 +1,7 @@
 # TDL validator
 
-Simple Test Dynamic Languagle checker. It use antlr4 and allows:
-1. Parse, build AST and validate TDL code from file
+Simple Test Dynamic Languagle checker. It uses antlr4 and allows:
+1. Parse, build AST and validate TDL code from files
 2. Name resolution (finding all unresolved objects)
 3. Check unused objects (variables, fields, functions, types, invokes on) and get list of its
 4. Find all errors (`unmatching arguments` for function and types, `unresolved` for variables, types, invokes on, `ambiguity`, `empty type`)
