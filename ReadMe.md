@@ -35,13 +35,19 @@ All of they has `Result` as supertype.
 
 `Verifier.getUnused(name: String): List<UnusedStorage>`. 
 `UnusedStorage` is a data class with fields:
-1: `scopeName: String` -- name of scope ("global" for global scope or name of the function/invoke on/type.
+1. `scopeName: String` -- name of scope ("global" for global scope or name of the function/invoke on/type.
+2. `unusedVariables: List<Variable>`
+3. `unusedFunctions: List<CallableEntity>`
+4. `unusedTypes: List<CallableEntity>`
+5. `unusedExemplars: List<Variable>`
+6. `unusedInvokesOn: List<CallableEntity>`
+7. `unusedFields: List<Variable>`
 
-2-7: `unusedVariables: List<Variable>`, `unusedFunctions: List<CallableEntity>`, `unusedTypes: List<CallableEntity>`, `unusedExemplars: List<Variable>`, `unusedInvokesOn: List<CallableEntity>`, `unusedFields: List<Variable>`. Any of this fields may be empyu list.
+Any of this fields may be empty lists.
 
-`EntityBase` is abstract class for describe all object in `Scope`. It has fields `name: String` and `isUsed: Boolean = false` (flag for mark that this entity is used in scope; all entity with `isUsed=false` will be returned in Verifier.getUnused())
+`EntityBase` is abstract class for describing all object in `Scope`. It has fields `name: String` and `isUsed: Boolean = false` (flag for marking entities that used in scope; all entity with `isUsed=false` will be returned by Verifier.getUnused())
 
 `CallableEntity` is a data class that describes any entity which can be called. Contains `name: String` and `parameterNameList: List<Variable>`
 
-`Variable` is a data class with fields `fields: List<String>?` and `reference: CallableEntity?` (if this variable is an exemplar of type, `fields` discribes available members of it, `reference` in this case is object of type of this exemplar). It used 
+`Variable` is a data class with fields `fields: List<String>?` and `reference: CallableEntity?` (if this variable is an exemplar of type, `fields` discribes available members of it, `reference` in this case is object of type of this exemplar)
 
