@@ -1,8 +1,12 @@
-import ast.objects.CallableEntity
-import ast.objects.Variable
+package ru.vldf.validator
+
+import TdlParser
+import TdlParserBaseVisitor
+import ru.vldf.validator.ast.objects.CallableEntity
+import ru.vldf.validator.ast.objects.Variable
 
 
-class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
+internal class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
     private val visitResult = VisitErrors()
 
     init {

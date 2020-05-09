@@ -1,4 +1,6 @@
-import ast.objects.EntityBase
+package ru.vldf.validator
+
+import ru.vldf.validator.ast.objects.EntityBase
 
 class VisitErrors {
     private val children = mutableListOf<VisitErrors>()

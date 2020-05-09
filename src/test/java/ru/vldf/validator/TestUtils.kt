@@ -1,3 +1,7 @@
+package ru.vldf.validator
+
+import TdlLexer
+import TdlParser
 import org.antlr.v4.runtime.ANTLRFileStream
 import org.antlr.v4.runtime.CommonTokenStream
 import org.junit.jupiter.api.Assertions

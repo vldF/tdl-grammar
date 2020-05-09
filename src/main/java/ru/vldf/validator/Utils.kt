@@ -1,10 +1,13 @@
-import ast.objects.Variable
+package ru.vldf.validator
+
+import TdlParser
+import ru.vldf.validator.ast.objects.Variable
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 
 
-fun getFlattenLeaf(tree: ParseTree): MutableList<Token> {
+internal fun getFlattenLeaf(tree: ParseTree): MutableList<Token> {
     val result = mutableListOf<Token>()
     for (i in 0 until tree.childCount) {
         val child = tree.getChild(i)
@@ -30,7 +33,7 @@ fun getFlattenLeaf(tree: ParseTree): MutableList<Token> {
  * In other cases, `TokenType.VARIABLE` will be returned
  */
 
-fun getTokenType(token: Token, parser: TdlParser): TokenType {
+internal fun getTokenType(token: Token, parser: TdlParser): TokenType {
     val idx = token.tokenIndex
     val stream = parser.tokenStream
 
@@ -80,7 +83,7 @@ enum class TokenType {
 }
 
 
-fun getTypedVariableByMemberToken(token: Token, parser: TdlParser): String {
+internal fun getTypedVariableByMemberToken(token: Token, parser: TdlParser): String {
     val tokenStream = parser.tokenStream
     val memberTokenStart = token.tokenIndex
     var i = memberTokenStart - 1
@@ -101,7 +104,7 @@ fun getTypedVariableByMemberToken(token: Token, parser: TdlParser): String {
 }
 
 
-fun getParamsCount(token: Token, parser: TdlParser): Int {
+internal fun getParamsCount(token: Token, parser: TdlParser): Int {
     val startBracket = token.tokenIndex + 1
     var i = startBracket
     val tokenStream = parser.tokenStream
@@ -134,7 +137,7 @@ fun getParamsCount(token: Token, parser: TdlParser): Int {
     return paramsCount
 }
 
-fun exploreStatement(ctx: ParseTree, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
+internal fun exploreStatement(ctx: ParseTree, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
     val visitResults = VisitErrors()
 
     val leafs = getFlattenLeaf(ctx)
@@ -179,7 +182,7 @@ fun exploreStatement(ctx: ParseTree, scope: Scope, parentName: String, parser: T
     return visitResults
 }
 
-fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
+internal fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
     val variableName = ctx.assignableExpression().simpleIdentifier().Identifier().text
     val expression = ctx.expression()
     val visitResult = VisitErrors()
@@ -307,7 +310,7 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, parentName
     return visitResult
 }
 
-fun exploreAsOperator(ctx: TdlParser.AsExpressionContext, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
+internal fun exploreAsOperator(ctx: TdlParser.AsExpressionContext, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
     val visitResult = VisitErrors()
 
     //checking for this is operator (not assignment)

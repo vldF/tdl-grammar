@@ -1,4 +1,6 @@
-import ast.objects.CallableEntity
+package ru.vldf.validator
+
+import ru.vldf.validator.ast.objects.CallableEntity
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 

@@ -1,3 +1,5 @@
+package ru.vldf.validator
+
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 

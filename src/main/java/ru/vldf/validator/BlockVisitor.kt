@@ -1,11 +1,15 @@
-import ast.objects.Variable
+package ru.vldf.validator
 
-class BlockVisitor(private val localScope: Scope,
-                   private val name: String,
-                   paramNames: List<String>,
-                   private val visitErrors: VisitErrors,
-                   private val parser: TdlParser,
-                   importParamsFromScope: Boolean = false
+import TdlParser
+import TdlParserBaseVisitor
+import ru.vldf.validator.ast.objects.Variable
+
+internal class BlockVisitor(private val localScope: Scope,
+                            private val name: String,
+                            paramNames: List<String>,
+                            private val visitErrors: VisitErrors,
+                            private val parser: TdlParser,
+                            importParamsFromScope: Boolean = false
 ) : TdlParserBaseVisitor<Unit>() {
 
     init {

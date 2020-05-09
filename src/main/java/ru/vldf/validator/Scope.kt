@@ -1,7 +1,9 @@
-import ast.objects.CallableEntity
-import ast.objects.Variable
+package ru.vldf.validator
 
-class Scope(private val name: String, baseScope: Scope?) {
+import ru.vldf.validator.ast.objects.CallableEntity
+import ru.vldf.validator.ast.objects.Variable
+
+internal class Scope(private val name: String, baseScope: Scope?) {
     constructor(): this("global", null)
 
     init {

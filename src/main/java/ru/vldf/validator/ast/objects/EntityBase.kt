@@ -1,4 +1,4 @@
-package ast.objects
+package ru.vldf.validator.ast.objects
 
 
 abstract class EntityBase {
