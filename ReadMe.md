@@ -6,7 +6,7 @@ Simple Test Dynamic Languagle checker. It use antlr4 and allows:
 3. Check unused objects (variables, fields, functions, types, invokes on) and get list of its
 4. Find all errors (`unmatching arguments` for function and types, `unresolved` for variables, types, invokes on, `ambiguity`, `empty type`)
 
-##Example of usage
+## Example of usage
 ```
 val verifier = Verifier("examples/default/")  // set path to directory with .tdl files 
                                               // it dir contains two file: point.tdl and triangle.tdl
