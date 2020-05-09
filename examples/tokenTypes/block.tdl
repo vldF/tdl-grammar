@@ -1,0 +1,9 @@
+{
+    a as A;  // TokenType(a) = VARIABLE, TokenType(A) = TYPE
+    b = a;   // TokenType(b) = VARIABLE_DECLARATION, TokenType(a) = VARIABLE
+    a.x;     // TT(a) = VARIABLE, TT(x) = MEMBER
+    a();     // TT(a) = CALLABLE
+    a(1, 2);  // TT(a) = CALLABLE
+
+    return b + a + a(); // TT(b), TT(a) = VARIABLE, TT(a()) = CALLABLE
+};

@@ -48,7 +48,7 @@ fun getTokenType(token: Token, parser: TdlParser): TokenType {
     }
     i = idx - 1
     while (i > 0) {
-        if (stream[i].channel == 0) { // 0 is channel for unhidden tokens
+        if (stream[i].channel == 0 && stream[i].type != 3) { // token is visible
             prevToken = stream[i]
             break
         }
@@ -80,26 +80,44 @@ enum class TokenType {
 }
 
 
-fun getTypedVariableByMemberToken(token: Token, parser: TdlParser): String =
-    parser.tokenStream[token.tokenIndex-2].text // -1 is '.', -2 is searching token name
+fun getTypedVariableByMemberToken(token: Token, parser: TdlParser): String {
+    val tokenStream = parser.tokenStream
+    val memberTokenStart = token.tokenIndex
+    var i = memberTokenStart - 1
+    var dotTrigger = false
+
+    while (i > 0) {
+        val text = tokenStream[i].text
+        if (tokenStream[i].channel == 0 && tokenStream[i].type != 3) {  // visible token
+            if (dotTrigger)
+                return tokenStream[i]!!.text
+            if (text == ".")
+                dotTrigger = true
+        }
+        i--
+    }
+
+    return ""
+}
 
 
-fun getParamsCount(token: Token, text: String): Int {
+fun getParamsCount(token: Token, parser: TdlParser): Int {
     val startBracket = token.stopIndex + 1
     var i = startBracket
+    val tokenStream = parser.tokenStream
     var bracketsPairs = 0
     var paramsCount = 0
     var zeroCommaFlag = false
 
-    while (i < text.length) {
-        when (text[i]) {
-            '(' -> bracketsPairs++
-            ')' -> bracketsPairs--
-            ',' -> {
+    while (i < tokenStream.size()) {
+        when (tokenStream[i].text) {
+            "(" -> bracketsPairs++
+            ")" -> bracketsPairs--
+            "," -> {
                 if (bracketsPairs == 1)
                     paramsCount++
             }
-            ' ' -> {}
+            " " -> {}
             else -> zeroCommaFlag = true
         }
         if (bracketsPairs == 0) {
@@ -116,7 +134,7 @@ fun getParamsCount(token: Token, text: String): Int {
     return paramsCount
 }
 
-fun exploreStatement(ctx: ParseTree, scope: Scope, text: String, parentName: String, parser: TdlParser): VisitErrors {
+fun exploreStatement(ctx: ParseTree, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
     val visitResults = VisitErrors()
 
     val leafs = getFlattenLeaf(ctx)
@@ -124,7 +142,7 @@ fun exploreStatement(ctx: ParseTree, scope: Scope, text: String, parentName: Str
         val name = leaf.text
         when (getTokenType(leaf, parser)) {
             TokenType.CALLABLE -> {
-                val paramsCount = getParamsCount(leaf, text)
+                val paramsCount = getParamsCount(leaf, parser)
                 if (scope.getCallable(name, paramsCount) == null) {
                     val variants = scope.getCallable(name)
                     if (variants != null)
@@ -161,7 +179,7 @@ fun exploreStatement(ctx: ParseTree, scope: Scope, text: String, parentName: Str
     return visitResults
 }
 
-fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: String, parentName: String, parser: TdlParser): VisitErrors {
+fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, parentName: String, parser: TdlParser): VisitErrors {
     val variableName = ctx.assignableExpression().simpleIdentifier().Identifier().text
     val expression = ctx.expression()
     val visitResult = VisitErrors()
@@ -200,7 +218,7 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: Stri
             // if this is assigment with one entity on the right part
             val leaf = leafs.first()
             val name = leaf.text
-            val params = getParamsCount(leaf, text)
+            val params = getParamsCount(leaf, parser)
             val typeCallable = scope.getType(name, params)
 
             if (typeCallable != null) {
@@ -246,7 +264,7 @@ fun exploreAssignment(ctx: TdlParser.AssignmentContext, scope: Scope, text: Stri
                 val name = leaf.text
                 when (getTokenType(leaf, parser)) {
                     TokenType.CALLABLE -> {
-                        val paramsCount = getParamsCount(leaf, text)
+                        val paramsCount = getParamsCount(leaf, parser)
                         if (scope.getCallable(name, paramsCount) == null) {
                             val variants = scope.getCallable(name)
                             if (variants == null)

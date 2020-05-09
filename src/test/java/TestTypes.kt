@@ -6,7 +6,7 @@ class TestTypes {
     @Test
     fun types() {
         val verifier = Verifier("examples/types/")
-        verifier.loadAndVerifyFile("types1")
+        verifier.loadAndVerifyFile("types")
         val errorsExpected = setOf(
                 EmptyType("A", "global", 1),
                 Unresolved("A", "main", 10),
@@ -35,7 +35,7 @@ class TestTypes {
         )
 
         val errors = verifier.getLastErrors()!!.getAll()
-        val unused = verifier.getUnused("types1")
+        val unused = verifier.getUnused("types")
         Assertions.assertEquals(errorsExpected, errors.toSet())
         Assertions.assertEquals(unusedExpected, unused?.toSet())
     }

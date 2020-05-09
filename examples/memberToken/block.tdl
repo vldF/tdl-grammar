@@ -1,0 +1,8 @@
+{
+    a.x; // x is member
+    superPuperMegaLongVariable.member; // member is member
+
+    a
+    .
+    member; // member is member
+}

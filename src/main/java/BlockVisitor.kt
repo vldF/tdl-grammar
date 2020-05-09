@@ -3,7 +3,6 @@ import ast.objects.Variable
 class BlockVisitor(private val localScope: Scope,
                    private val name: String,
                    paramNames: List<String>,
-                   private val text: String,
                    private val visitErrors: VisitErrors,
                    private val parser: TdlParser,
                    importParamsFromScope: Boolean = false
@@ -27,14 +26,14 @@ class BlockVisitor(private val localScope: Scope,
             return
         }
 
-        val results = exploreStatement(ctx, localScope, text, name, parser)
+        val results = exploreStatement(ctx, localScope, name, parser)
         visitErrors.addChild(results)
         super.visitStatement(ctx)
 
     }
 
     override fun visitAssignment(ctx: TdlParser.AssignmentContext) {
-        val results = exploreAssignment(ctx, localScope, text, name, parser)
+        val results = exploreAssignment(ctx, localScope, name, parser)
         visitErrors.addChild(results)
         super.visitAssignment(ctx)
     }

@@ -3,7 +3,6 @@ import ast.objects.Variable
 
 
 class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope: Scope) : TdlParserBaseVisitor<Unit>() {
-    private val text = parser.inputStream.text
     private val visitResult = VisitErrors()
 
     init {
@@ -29,7 +28,7 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
             val localVisitResult = VisitErrors()
             visitResult.addChild(localVisitResult)
             val localScope = Scope(name, globalScope)
-            BlockVisitor(localScope, name, paramNames, text, localVisitResult, parser).visitFunctionBody(body)
+            BlockVisitor(localScope, name, paramNames, localVisitResult, parser).visitFunctionBody(body)
         }
         super.visitFunctionDeclaration(ctx)
     }
@@ -72,7 +71,7 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
             val thisVariable = Variable("this")
             thisVariable.reference = type
             localScope.addExemplar(thisVariable)
-            BlockVisitor(localScope, name, paramsList, text, localVisitResult, parser, importParamsFromScope = true)
+            BlockVisitor(localScope, name, paramsList, localVisitResult, parser, importParamsFromScope = true)
                     .visitFunctionBody(ctx.functionBody())
         }
 
@@ -85,7 +84,7 @@ class TdlTreeScopeBuilder(private val parser: TdlParser, private val globalScope
         val assignment = ctx.declaration().assignment()
         if (assignment != null) {
             //if this is assignment
-            val localVisitResult = exploreAssignment(assignment, globalScope, text, "global", parser)
+            val localVisitResult = exploreAssignment(assignment, globalScope, "global", parser)
             visitResult.addChild(localVisitResult)
         }
 
