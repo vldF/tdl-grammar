@@ -46,9 +46,12 @@ class TestUtils {
                 TokenType.MEMBER,               // TT(x), line 4
                 TokenType.CALLABLE,             // TT(a), line 5
                 TokenType.CALLABLE,             // TT(a), line 6
-                TokenType.VARIABLE,             // TT(b), line 8
-                TokenType.VARIABLE,             // TT(a), line 8
-                TokenType.CALLABLE              // TT(a), line 8
+                TokenType.CALLABLE,             // TT(a), line 8
+                TokenType.VARIABLE,             // TT(arg), line 9
+                TokenType.VARIABLE,             // TT(arg), line 10
+                TokenType.VARIABLE,             // TT(b), line 12
+                TokenType.VARIABLE,             // TT(a), line 12
+                TokenType.CALLABLE              // TT(a), line 12
         )
 
         Assertions.assertEquals(expectedTokenTypes, tokenTypes)
@@ -68,5 +71,16 @@ class TestUtils {
         Assertions.assertEquals(expectedNames, names)
     }
 
+    @Test
+    fun testGetParamsCount() {
+        val parser = loadParser("./examples/functionCall/paramsCount.tdl")
+        val tree = parser.block()
 
+        val expectedParamCounts = listOf(0, 1, 3, 3)
+
+        val paramCounts = getFlattenLeaf(tree)
+                .filter { getTokenType(it, parser) == TokenType.CALLABLE }
+                .map { getParamsCount(it, parser) }
+        Assertions.assertEquals(expectedParamCounts, paramCounts)
+    }
 }

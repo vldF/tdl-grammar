@@ -5,5 +5,9 @@
     a();     // TT(a) = CALLABLE
     a(1, 2);  // TT(a) = CALLABLE
 
+    a(
+    arg,
+    arg);
+
     return b + a + a(); // TT(b), TT(a) = VARIABLE, TT(a()) = CALLABLE
 };

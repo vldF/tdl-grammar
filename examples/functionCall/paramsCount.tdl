@@ -1,0 +1,10 @@
+{
+    func();  // params count is 0
+    func(1); // params count is 1
+    func(1, 2, "3"); // params count is 3
+    func(
+        1,
+        2,
+        3
+    ); // params count is 3
+}

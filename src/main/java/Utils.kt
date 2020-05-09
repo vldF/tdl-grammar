@@ -102,7 +102,7 @@ fun getTypedVariableByMemberToken(token: Token, parser: TdlParser): String {
 
 
 fun getParamsCount(token: Token, parser: TdlParser): Int {
-    val startBracket = token.stopIndex + 1
+    val startBracket = token.tokenIndex + 1
     var i = startBracket
     val tokenStream = parser.tokenStream
     var bracketsPairs = 0
